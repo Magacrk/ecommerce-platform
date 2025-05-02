@@ -26,6 +26,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
         
+      - name: List files before build
+        run: ls -la
+        
       - name: Build
         run: npm run build
         env:
@@ -35,6 +38,13 @@ jobs:
           VITE_USER_POOL_CLIENT_ID: ${{ secrets.AWS_COGNITO_CLIENT_ID }}
           VITE_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
           VITE_IDENTITY_POOL_ID: ${{ secrets.AWS_COGNITO_IDENTITY_POOL_ID }}
+          VITE_SKIP_AWS_CONFIG: 'true'
+          VITE_USE_MOCK_DATA: 'true'
+          
+      - name: List files after build
+        run: |
+          ls -la
+          ls -la dist || echo "dist directory not found"
           
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -43,8 +53,22 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
           
+      - name: Debug AWS S3 bucket
+        run: |
+          echo "Using S3 bucket name ${S3_BUCKET_NAME}"
+          aws s3 ls s3://${S3_BUCKET_NAME} || echo "Could not list bucket contents"
+        env:
+          S3_BUCKET_NAME: ${{ secrets.AWS_S3_BUCKET }}
+          
       - name: Upload to S3
-        run: aws s3 sync ./dist/ s3://${{ secrets.AWS_S3_BUCKET }} --delete
+        run: |
+          if [ -d "dist" ]; then
+            aws s3 sync ./dist/ s3://${{ secrets.AWS_S3_BUCKET }} --delete
+          else
+            echo "Error: dist directory does not exist. Build may have failed."
+            exit 1
+          fi
         
       - name: Invalidate CloudFront cache
+        if: success()
         run: aws cloudfront create-invalidation --distribution-id ${{ secrets.AWS_CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*" 
