@@ -109,7 +109,7 @@ const HomePage = () => {
   return (
     <>
       <Helmet>
-        <title>MarketHub - Multi-Vendor Marketplace</title>
+        <title>MarketHub - Multi-Vendor Marketplace | AWS Deployed</title>
         <meta name="description" content="Discover unique products from independent sellers on our multi-vendor marketplace." />
       </Helmet>
 
