@@ -48,8 +48,15 @@ jobs:
         run: |
           echo "Current directory: $(pwd)"
           ls -la
-          echo "Looking for dist directory:"
-          find . -name "dist" -type d | grep -v "node_modules"
+          echo "Checking for build directory (vite.config.ts has outDir set to 'build'):"
+          if [ -d "build" ]; then
+            echo "Found 'build' directory. Contents:"
+            ls -la build/
+          else
+            echo "build directory not found"
+            echo "Looking for any build output directories:"
+            find . -type d -maxdepth 1 | grep -v "node_modules" | grep -v "^\.$"
+          fi
           
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -65,15 +72,15 @@ jobs:
         env:
           S3_BUCKET_NAME: ${{ secrets.AWS_S3_BUCKET }}
       
-      # Move one level up before upload since we're already in the frontend directory
+      # Use the 'build' directory based on vite.config.ts configuration
       - name: Upload to S3
         run: |
-          DIST_PATH="dist"
-          if [ -d "$DIST_PATH" ]; then
-            echo "Found dist directory at: $DIST_PATH"
-            aws s3 sync ./$DIST_PATH/ s3://${{ secrets.AWS_S3_BUCKET }} --delete
+          BUILD_DIR="build"
+          if [ -d "$BUILD_DIR" ]; then
+            echo "Found build directory at: $BUILD_DIR"
+            aws s3 sync ./$BUILD_DIR/ s3://${{ secrets.AWS_S3_BUCKET }} --delete
           else
-            echo "Error: dist directory does not exist at $DIST_PATH"
+            echo "Error: build directory does not exist at $BUILD_DIR"
             echo "Current directory: $(pwd)"
             echo "Directory contents:"
             ls -la
