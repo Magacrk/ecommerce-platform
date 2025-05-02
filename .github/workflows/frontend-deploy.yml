@@ -10,9 +10,6 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./frontend
     steps:
       - uses: actions/checkout@v3
       
@@ -24,15 +21,11 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
           
       - name: Install dependencies
+        working-directory: ./frontend
         run: npm ci
         
-      - name: Print working directory
-        run: pwd
-        
-      - name: List files before build
-        run: ls -la
-        
       - name: Build
+        working-directory: ./frontend
         run: npm run build
         env:
           VITE_API_BASE_URL: ${{ secrets.BACKEND_URL }}/api
@@ -44,19 +37,14 @@ jobs:
           VITE_SKIP_AWS_CONFIG: 'true'
           VITE_USE_MOCK_DATA: 'true'
           
-      - name: List files after build
+      - name: Debug directory content
         run: |
-          echo "Current directory: $(pwd)"
+          echo "Workspace root:"
           ls -la
-          echo "Checking for build directory (vite.config.ts has outDir set to 'build'):"
-          if [ -d "build" ]; then
-            echo "Found 'build' directory. Contents:"
-            ls -la build/
-          else
-            echo "build directory not found"
-            echo "Looking for any build output directories:"
-            find . -type d -maxdepth 1 | grep -v "node_modules" | grep -v "^\.$"
-          fi
+          echo "Frontend directory:"
+          ls -la frontend/
+          echo "Build directory:"
+          ls -la frontend/build/ || echo "Build directory not found"
           
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -65,27 +53,8 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
           
-      - name: Debug AWS S3 bucket
-        run: |
-          echo "Using S3 bucket name: ${S3_BUCKET_NAME}"
-          aws s3 ls s3://${S3_BUCKET_NAME} || echo "Could not list bucket contents"
-        env:
-          S3_BUCKET_NAME: ${{ secrets.AWS_S3_BUCKET }}
-      
-      # Use the 'build' directory based on vite.config.ts configuration
       - name: Upload to S3
-        run: |
-          BUILD_DIR="build"
-          if [ -d "$BUILD_DIR" ]; then
-            echo "Found build directory at: $BUILD_DIR"
-            aws s3 sync ./$BUILD_DIR/ s3://${{ secrets.AWS_S3_BUCKET }} --delete
-          else
-            echo "Error: build directory does not exist at $BUILD_DIR"
-            echo "Current directory: $(pwd)"
-            echo "Directory contents:"
-            ls -la
-            exit 1
-          fi
+        run: aws s3 sync frontend/build/ s3://${{ secrets.AWS_S3_BUCKET }} --delete
         
       - name: Invalidate CloudFront cache
         if: success()
