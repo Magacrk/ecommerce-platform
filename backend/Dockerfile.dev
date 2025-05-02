@@ -1,0 +1,27 @@
+FROM node:16-alpine
+
+WORKDIR /usr/src/app
+
+# Create app directory
+RUN mkdir -p /usr/src/app
+
+# Copy package.json and package-lock.json
+COPY package*.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy prisma schema
+COPY prisma ./prisma/
+
+# Generate Prisma client
+RUN npx prisma generate
+
+# Copy source code
+COPY . .
+
+# Expose port
+EXPOSE 4000
+
+# Start the development server
+CMD ["npm", "run", "dev"] 

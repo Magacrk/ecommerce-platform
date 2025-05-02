@@ -1,0 +1,23 @@
+2025-05-01 20:39:28:3928 [31merror[39m: [31m[39m
+[31mInvalid `prisma.product.findMany()` invocation in[39m
+[31m/usr/src/app/src/controllers/product.controller.ts:140:51[39m
+
+[31m  137 const { limit = '8' } = req.query;[39m
+[31m  138 const limitNum = parseInt(limit as string, 10);[39m
+[31m  139 [39m
+[31m→ 140 const featuredProducts = await prisma.product.findMany([39m
+[31mDatabase `ecommerce` does not exist on the database server at `postgres:5432`. PrismaClientInitializationError: [39m
+[31mInvalid `prisma.product.findMany()` invocation in[39m
+[31m/usr/src/app/src/controllers/product.controller.ts:140:51[39m
+
+[31m  137 const { limit = '8' } = req.query;[39m
+[31m  138 const limitNum = parseInt(limit as string, 10);[39m
+[31m  139 [39m
+[31m→ 140 const featuredProducts = await prisma.product.findMany([39m
+[31mDatabase `ecommerce` does not exist on the database server at `postgres:5432`.[39m
+[31m    at Rn.handleRequestError (/usr/src/app/node_modules/@prisma/client/runtime/library.js:174:7601)[39m
+[31m    at Rn.handleAndLogRequestError (/usr/src/app/node_modules/@prisma/client/runtime/library.js:174:6754)[39m
+[31m    at /usr/src/app/node_modules/@prisma/client/runtime/library.js:177:3010[39m
+[31m    at /usr/src/app/node_modules/@prisma/client/runtime/library.js:177:3225[39m
+[31m    at t._executeRequest (/usr/src/app/node_modules/@prisma/client/runtime/library.js:177:11403)[39m
+[31m    at getFeaturedProducts (/usr/src/app/src/controllers/product.controller.ts:140:30)[39m

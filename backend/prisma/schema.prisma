@@ -1,0 +1,299 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  cognitoId     String    @unique
+  email         String    @unique
+  firstName     String?
+  lastName      String?
+  role          UserRole  @default(CUSTOMER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  customer      Customer?
+  seller        Seller?
+  orders        Order[]
+  reviews       Review[]
+  addresses     Address[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  ADMIN
+  CUSTOMER
+  SELLER
+}
+
+model Customer {
+  id            String    @id @default(uuid())
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Customer-specific fields
+  phoneNumber   String?
+  
+  // Relations
+  cart          CartItem[]
+  wishlist      WishlistItem[]
+
+  @@map("customers")
+}
+
+model Seller {
+  id            String    @id @default(uuid())
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Seller-specific fields
+  storeName     String
+  description   String?
+  logo          String?
+  banner        String?
+  isVerified    Boolean   @default(false)
+  rating        Float?
+  
+  // Relations
+  products      Product[]
+  orders        OrderItem[]
+  paymentInfo   SellerPayment?
+
+  @@map("sellers")
+}
+
+model SellerPayment {
+  id            String    @id @default(uuid())
+  sellerId      String    @unique
+  seller        Seller    @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  
+  // Payment info (Stripe or another provider)
+  stripeAccountId String?
+  paypalEmail     String?
+  bankName        String?
+  accountNumber   String?
+  routingNumber   String?
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@map("seller_payments")
+}
+
+model Product {
+  id            String    @id @default(uuid())
+  name          String
+  description   String
+  price         Decimal   @db.Decimal(10, 2)
+  discountPrice Decimal?  @db.Decimal(10, 2)
+  stock         Int       @default(0)
+  sku           String?   @unique
+  images        String[]  // Array of image URLs
+  sellerId      String
+  seller        Seller    @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  categoryId    String
+  category      Category  @relation(fields: [categoryId], references: [id])
+  featured      Boolean   @default(false)
+  rating        Float?
+  reviewCount   Int       @default(0)
+  status        ProductStatus @default(DRAFT)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  cartItems     CartItem[]
+  orderItems    OrderItem[]
+  reviews       Review[]
+  attributes    ProductAttribute[]
+  wishlistItems WishlistItem[]
+  tags          ProductTag[]
+
+  @@index([categoryId])
+  @@index([sellerId])
+  @@map("products")
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+  DELETED
+}
+
+model ProductAttribute {
+  id          String    @id @default(uuid())
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name        String
+  value       String
+  
+  @@unique([productId, name])
+  @@map("product_attributes")
+}
+
+model ProductTag {
+  id          String    @id @default(uuid())
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name        String
+
+  @@unique([productId, name])
+  @@map("product_tags")
+}
+
+model Category {
+  id          String     @id @default(uuid())
+  name        String     @unique
+  description String?
+  image       String?
+  parentId    String?
+  parent      Category?  @relation("CategoryToSubcategory", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryToSubcategory")
+  products    Product[]
+  
+  @@map("categories")
+}
+
+model CartItem {
+  id          String    @id @default(uuid())
+  customerId  String
+  customer    Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity    Int
+  addedAt     DateTime  @default(now())
+  
+  @@unique([customerId, productId])
+  @@map("cart_items")
+}
+
+model WishlistItem {
+  id          String    @id @default(uuid())
+  customerId  String
+  customer    Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  addedAt     DateTime  @default(now())
+  
+  @@unique([customerId, productId])
+  @@map("wishlist_items")
+}
+
+model Order {
+  id             String     @id @default(uuid())
+  orderNumber    String     @unique
+  userId         String
+  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status         OrderStatus @default(PENDING)
+  totalAmount    Decimal    @db.Decimal(10, 2)
+  shippingAmount Decimal    @db.Decimal(10, 2) @default(0)
+  taxAmount      Decimal    @db.Decimal(10, 2) @default(0)
+  shippingAddressId String
+  shippingAddress Address    @relation(fields: [shippingAddressId], references: [id])
+  paymentIntentId String?
+  paymentStatus  PaymentStatus @default(PENDING)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  
+  // Relations
+  items         OrderItem[]
+  
+  @@map("orders")
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+model OrderItem {
+  id          String    @id @default(uuid())
+  orderId     String
+  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id])
+  sellerId    String
+  seller      Seller    @relation(fields: [sellerId], references: [id])
+  productName String
+  quantity    Int
+  price       Decimal   @db.Decimal(10, 2)
+  total       Decimal   @db.Decimal(10, 2)
+  status      OrderItemStatus @default(PENDING)
+  
+  @@map("order_items")
+}
+
+enum OrderItemStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+model Address {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        AddressType @default(SHIPPING)
+  firstName   String
+  lastName    String
+  addressLine1 String
+  addressLine2 String?
+  city        String
+  state       String
+  postalCode  String
+  country     String
+  phoneNumber String?
+  isDefault   Boolean   @default(false)
+  
+  // Relations
+  orders      Order[]
+
+  @@map("addresses")
+}
+
+enum AddressType {
+  SHIPPING
+  BILLING
+  BOTH
+}
+
+model Review {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  rating      Int
+  comment     String?
+  images      String[]
+  isVerified  Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@unique([userId, productId])
+  @@map("reviews")
+} 
