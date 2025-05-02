@@ -26,6 +26,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
         
+      - name: Print working directory
+        run: pwd
+        
       - name: List files before build
         run: ls -la
         
@@ -43,8 +46,10 @@ jobs:
           
       - name: List files after build
         run: |
+          echo "Current directory: $(pwd)"
           ls -la
-          ls -la dist || echo "dist directory not found"
+          echo "Looking for dist directory:"
+          find . -name "dist" -type d | grep -v "node_modules"
           
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -55,17 +60,23 @@ jobs:
           
       - name: Debug AWS S3 bucket
         run: |
-          echo "Using S3 bucket name ${S3_BUCKET_NAME}"
+          echo "Using S3 bucket name: ${S3_BUCKET_NAME}"
           aws s3 ls s3://${S3_BUCKET_NAME} || echo "Could not list bucket contents"
         env:
           S3_BUCKET_NAME: ${{ secrets.AWS_S3_BUCKET }}
-          
+      
+      # Move one level up before upload since we're already in the frontend directory
       - name: Upload to S3
         run: |
-          if [ -d "dist" ]; then
-            aws s3 sync ./dist/ s3://${{ secrets.AWS_S3_BUCKET }} --delete
+          DIST_PATH="dist"
+          if [ -d "$DIST_PATH" ]; then
+            echo "Found dist directory at: $DIST_PATH"
+            aws s3 sync ./$DIST_PATH/ s3://${{ secrets.AWS_S3_BUCKET }} --delete
           else
-            echo "Error: dist directory does not exist. Build may have failed."
+            echo "Error: dist directory does not exist at $DIST_PATH"
+            echo "Current directory: $(pwd)"
+            echo "Directory contents:"
+            ls -la
             exit 1
           fi
         
