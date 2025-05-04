@@ -25,7 +25,8 @@ A production-ready e-commerce platform built with React, TypeScript, Node.js, an
 ### Deployment
 - AWS Elastic Beanstalk (Backend)
 - AWS S3/CloudFront (Frontend)
-- CloudFormation templates for AWS resource provisioning
+- AWS ECR for container registry
+- GitHub Actions for CI/CD
 
 ## Features
 - Multi-vendor marketplace
@@ -87,47 +88,94 @@ A production-ready e-commerce platform built with React, TypeScript, Node.js, an
    - Frontend: http://localhost:3000
    - Backend API: http://localhost:4000
 
-## AWS Deployment
+## AWS Deployment Guide
 
-### AWS Setup
-1. Create required AWS resources using CloudFormation template
-   ```
-   aws cloudformation create-stack --stack-name ecommerce-infrastructure --template-body file://deployment/cloudformation/main.yml --capabilities CAPABILITY_IAM
-   ```
+### Required AWS Services
+- AWS Cognito: User authentication
+- AWS RDS: PostgreSQL database
+- AWS S3: Frontend hosting and product images
+- AWS CloudFront: Content distribution
+- AWS Elastic Beanstalk or ECS: Backend hosting
+- AWS ECR: Docker image repository
 
-2. Configure AWS resources in environment variables
+### AWS Setup Prerequisites
+1. AWS Account with Admin access
+2. AWS CLI installed and configured
+3. GitHub repository with your codebase
 
-3. Deploy backend to Elastic Beanstalk
-   ```
-   cd backend
-   npm run deploy:prod
-   ```
+### Step 1: Set Up AWS Infrastructure
+```bash
+# Deploy CloudFormation stack for infrastructure
+aws cloudformation create-stack \
+  --stack-name ecommerce-infrastructure \
+  --template-body file://deployment/cloudformation/main.yml \
+  --parameters ParameterKey=DatabaseUsername,ParameterValue=postgres \
+               ParameterKey=DatabasePassword,ParameterValue=YourSecurePassword \
+               ParameterKey=DatabaseName,ParameterValue=ecommerce \
+               ParameterKey=Environment,ParameterValue=production \
+  --capabilities CAPABILITY_IAM
+```
 
-4. Deploy frontend to S3/CloudFront
-   ```
-   cd frontend
-   npm run deploy:prod
-   ```
+### Step 2: Create ECR Repositories
+```bash
+# Create ECR repositories for backend and frontend
+aws ecr create-repository --repository-name ecommerce/backend
+aws ecr create-repository --repository-name ecommerce/frontend
+```
 
-## Maintenance and Scaling
+### Step 3: Set Up GitHub Secrets
+
+You need to add the following secrets to your GitHub repository:
+
+| Secret Name | Description |
+|-------------|-------------|
+| AWS_ACCESS_KEY_ID | IAM user access key |
+| AWS_SECRET_ACCESS_KEY | IAM user secret key |
+| AWS_REGION | Region (e.g., us-east-1) |
+| DATABASE_URL | PostgreSQL connection string |
+| AWS_COGNITO_USER_POOL_ID | Cognito user pool ID |
+| AWS_COGNITO_CLIENT_ID | Cognito app client ID |
+| AWS_COGNITO_IDENTITY_POOL_ID | Cognito identity pool ID |
+| AWS_S3_BUCKET | S3 bucket for frontend |
+| AWS_CLOUDFRONT_DISTRIBUTION_ID | CloudFront distribution ID |
+| BACKEND_URL | URL of the backend API |
+| AWS_EB_APP_NAME | Elastic Beanstalk app name |
+| AWS_EB_ENVIRONMENT | Elastic Beanstalk environment |
+| AWS_EB_BUCKET | S3 bucket for EB deployments |
+
+### Step 4: Push Code to Trigger Deployment
+```bash
+git push origin main
+```
+
+After pushing, GitHub Actions will:
+1. Build the frontend and backend
+2. Run tests
+3. Build Docker images
+4. Push images to ECR
+5. Deploy the backend to Elastic Beanstalk
+6. Deploy the frontend to S3/CloudFront
+
+## Maintenance
 
 ### Database Migrations
-```
+```bash
 cd backend
-npx prisma migrate dev
-npx prisma migrate deploy # for production
+npx prisma migrate deploy
 ```
 
-### CI/CD
-The project includes GitHub Actions workflows for:
-- Code linting and testing
-- Automatic deployment to staging/production environments
-- Database migrations
+### Manual Deployment
+```bash
+# Backend
+cd backend
+npm run build
+npm run deploy:prod
 
-## Cost Optimization
-- S3 lifecycle policies for old product images
-- RDS instance sizing recommendations
-- CloudFront caching strategies to reduce origin requests
+# Frontend
+cd frontend
+npm run build
+npm run deploy:prod
+```
 
 ## License
 MIT 
