@@ -26,7 +26,7 @@ if (import.meta.env.VITE_SKIP_AWS_CONFIG === 'true' || (window.ENV_CONFIG && (wi
     }
   });
 } else {
-  // Get environment variables - prefer runtime config over build-time env vars
+  // Get environment variables - check all available sources
   const envConfig = (window.ENV_CONFIG || {}) as {
     VITE_AWS_REGION?: string;
     VITE_USER_POOL_ID?: string;
@@ -36,11 +36,24 @@ if (import.meta.env.VITE_SKIP_AWS_CONFIG === 'true' || (window.ENV_CONFIG && (wi
     VITE_SKIP_AWS_CONFIG?: string;
     VITE_USE_MOCK_DATA?: string;
   };
-  const region = envConfig.VITE_AWS_REGION || import.meta.env.VITE_AWS_REGION || 'us-east-1';
-  const userPoolId = envConfig.VITE_USER_POOL_ID || import.meta.env.VITE_USER_POOL_ID;
-  const userPoolClientId = envConfig.VITE_USER_POOL_CLIENT_ID || import.meta.env.VITE_USER_POOL_CLIENT_ID;
-  const s3Bucket = envConfig.VITE_S3_BUCKET || import.meta.env.VITE_S3_BUCKET;
-  const identityPoolId = envConfig.VITE_IDENTITY_POOL_ID || import.meta.env.VITE_IDENTITY_POOL_ID;
+  
+  // Inline env in HTML
+  const inlineEnv = (window.env || {}) as {
+    AWS_REGION?: string;
+    AWS_COGNITO_USER_POOL_ID?: string;
+    AWS_COGNITO_CLIENT_ID?: string; 
+    S3_BUCKET?: string;
+    S3_REGION?: string;
+    AWS_COGNITO_IDENTITY_POOL_ID?: string;
+    BACKEND_URL?: string;
+  };
+  
+  // Prioritize sources: inline env > runtime env > build-time env
+  const region = inlineEnv.AWS_REGION || envConfig.VITE_AWS_REGION || import.meta.env.VITE_AWS_REGION || 'us-east-1';
+  const userPoolId = inlineEnv.AWS_COGNITO_USER_POOL_ID || envConfig.VITE_USER_POOL_ID || import.meta.env.VITE_USER_POOL_ID;
+  const userPoolClientId = inlineEnv.AWS_COGNITO_CLIENT_ID || envConfig.VITE_USER_POOL_CLIENT_ID || import.meta.env.VITE_USER_POOL_CLIENT_ID;
+  const s3Bucket = inlineEnv.S3_BUCKET || envConfig.VITE_S3_BUCKET || import.meta.env.VITE_S3_BUCKET;
+  const identityPoolId = inlineEnv.AWS_COGNITO_IDENTITY_POOL_ID || envConfig.VITE_IDENTITY_POOL_ID || import.meta.env.VITE_IDENTITY_POOL_ID;
   
   // Log config for debugging in production
   console.log('AWS Config:', { 

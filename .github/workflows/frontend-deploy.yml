@@ -62,13 +62,22 @@ jobs:
             cp frontend/public/env-config.js $BUILD_DIR/
           fi
           
-          # Replace placeholders with actual values
+          # Replace placeholders with actual values in env-config.js
           sed -i "s|__BACKEND_URL__|${{ secrets.BACKEND_URL }}|g" $BUILD_DIR/env-config.js
           sed -i "s|__AWS_REGION__|${{ secrets.AWS_REGION }}|g" $BUILD_DIR/env-config.js
           sed -i "s|__AWS_COGNITO_USER_POOL_ID__|${{ secrets.AWS_COGNITO_USER_POOL_ID }}|g" $BUILD_DIR/env-config.js
           sed -i "s|__AWS_COGNITO_CLIENT_ID__|${{ secrets.AWS_COGNITO_CLIENT_ID }}|g" $BUILD_DIR/env-config.js
           sed -i "s|__AWS_S3_BUCKET__|${{ secrets.AWS_S3_BUCKET }}|g" $BUILD_DIR/env-config.js
           sed -i "s|__AWS_COGNITO_IDENTITY_POOL_ID__|${{ secrets.AWS_COGNITO_IDENTITY_POOL_ID }}|g" $BUILD_DIR/env-config.js
+          
+          # Replace placeholders in the index.html file
+          sed -i "s|%%AWS_REGION%%|${{ secrets.AWS_REGION }}|g" $BUILD_DIR/index.html
+          sed -i "s|%%AWS_COGNITO_USER_POOL_ID%%|${{ secrets.AWS_COGNITO_USER_POOL_ID }}|g" $BUILD_DIR/index.html
+          sed -i "s|%%AWS_COGNITO_CLIENT_ID%%|${{ secrets.AWS_COGNITO_CLIENT_ID }}|g" $BUILD_DIR/index.html
+          sed -i "s|%%AWS_COGNITO_IDENTITY_POOL_ID%%|${{ secrets.AWS_COGNITO_IDENTITY_POOL_ID }}|g" $BUILD_DIR/index.html
+          sed -i "s|%%S3_BUCKET%%|${{ secrets.AWS_S3_BUCKET }}|g" $BUILD_DIR/index.html
+          sed -i "s|%%S3_REGION%%|${{ secrets.AWS_REGION }}|g" $BUILD_DIR/index.html
+          sed -i "s|%%BACKEND_URL%%|${{ secrets.BACKEND_URL }}|g" $BUILD_DIR/index.html
       
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1

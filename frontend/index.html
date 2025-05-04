@@ -10,10 +10,27 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Script to load environment variables -->
+    <script>
+      window.env = {
+        // AWS Configuration
+        AWS_REGION: '%%AWS_REGION%%',
+        AWS_COGNITO_USER_POOL_ID: '%%AWS_COGNITO_USER_POOL_ID%%',
+        AWS_COGNITO_CLIENT_ID: '%%AWS_COGNITO_CLIENT_ID%%',
+        AWS_COGNITO_IDENTITY_POOL_ID: '%%AWS_COGNITO_IDENTITY_POOL_ID%%',
+        
+        // S3 Configuration
+        S3_BUCKET: '%%S3_BUCKET%%',
+        S3_REGION: '%%S3_REGION%%',
+        
+        // Backend Configuration
+        BACKEND_URL: '%%BACKEND_URL%%'
+      };
+    </script>
   </head>
   <body class="bg-gray-50 text-gray-900 antialiased">
     <div id="root"></div>
-    <!-- Load runtime environment configuration -->
+    <!-- Optional: Load runtime environment configuration -->
     <script src="/env-config.js"></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
