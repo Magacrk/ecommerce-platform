@@ -74,75 +74,55 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
           
-      # Option 1: Deploy to Elastic Beanstalk
-      - name: Generate deployment package
-        run: zip -r deploy.zip . -x "node_modules/*" "src/*" ".git/*"
-        
-      - name: Upload package to S3
-        run: aws s3 cp deploy.zip s3://${{ secrets.AWS_EB_BUCKET }}/deploy-${{ github.run_id }}-${{ github.sha }}.zip
-        
-      - name: Generate unique version label
-        id: version-label
-        run: echo "VERSION=v-$(date +'%Y%m%d-%H%M%S')-${GITHUB_RUN_NUMBER}-${GITHUB_SHA:0:7}" >> $GITHUB_OUTPUT
-        
-      - name: Create new Elastic Beanstalk version
+      # Use AWS EB CLI for deployment
+      - name: Install AWS EB CLI
         run: |
-          # Check if application exists, create if it doesn't
-          aws elasticbeanstalk describe-applications --application-names ${{ secrets.AWS_EB_APP_NAME }} || \
-          aws elasticbeanstalk create-application --application-name ${{ secrets.AWS_EB_APP_NAME }}
-          
-          # Create new version
-          aws elasticbeanstalk create-application-version \
-          --application-name ${{ secrets.AWS_EB_APP_NAME }} \
-          --version-label "${{ steps.version-label.outputs.VERSION }}" \
-          --source-bundle S3Bucket="${{ secrets.AWS_EB_BUCKET }}",S3Key="deploy-${{ github.run_id }}-${{ github.sha }}.zip" \
-          --auto-create-application
-          
-      - name: Wait for application version to be processed (with timeout)
+          pip install awsebcli
+      
+      - name: Create EB configuration
         run: |
-          echo "Waiting for application version to be processed..."
-          MAX_ATTEMPTS=30
-          ATTEMPT=0
+          # Create .elasticbeanstalk directory
+          mkdir -p .elasticbeanstalk
           
-          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
-            STATUS=$(aws elasticbeanstalk describe-application-versions \
-              --application-name ${{ secrets.AWS_EB_APP_NAME }} \
-              --version-labels "${{ steps.version-label.outputs.VERSION }}" \
-              --query "ApplicationVersions[0].Status" \
-              --output text)
-              
-            echo "Current status: $STATUS"
-            
-            if [ "$STATUS" = "PROCESSED" ]; then
-              echo "Application version is now available!"
-              break
-            elif [ "$STATUS" = "FAILED" ]; then
-              echo "Application version processing failed!"
-              exit 1
-            fi
-            
-            ATTEMPT=$((ATTEMPT+1))
-            echo "Waiting for processing... Attempt $ATTEMPT of $MAX_ATTEMPTS"
-            sleep 10
-          done
-          
-          if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
-            echo "Timed out waiting for application version to be processed"
-            exit 1
-          fi
+          # Create config.yml file
+          cat > .elasticbeanstalk/config.yml << EOF
+          branch-defaults:
+            main:
+              environment: ${{ secrets.AWS_EB_ENVIRONMENT }}
+          environment-defaults:
+            ${{ secrets.AWS_EB_ENVIRONMENT }}:
+              branch: null
+              repository: null
+          global:
+            application_name: ${{ secrets.AWS_EB_APP_NAME }}
+            default_ec2_keyname: null
+            default_platform: Node.js 18
+            default_region: ${{ secrets.AWS_REGION }}
+            sc: git
+          EOF
           
       - name: Deploy to Elastic Beanstalk
         run: |
-          # Check if environment exists, create if it doesn't
-          aws elasticbeanstalk describe-environments --environment-names ${{ secrets.AWS_EB_ENVIRONMENT }} \
-          --application-name ${{ secrets.AWS_EB_APP_NAME }} || \
-          aws elasticbeanstalk create-environment \
-          --application-name ${{ secrets.AWS_EB_APP_NAME }} \
-          --environment-name ${{ secrets.AWS_EB_ENVIRONMENT }} \
-          --solution-stack-name "64bit Amazon Linux 2023 v6.0.0 running Node.js 18" \
-          --version-label "${{ steps.version-label.outputs.VERSION }}"
+          # Create application if it doesn't exist
+          aws elasticbeanstalk describe-applications --application-names ${{ secrets.AWS_EB_APP_NAME }} || \
+          aws elasticbeanstalk create-application --application-name ${{ secrets.AWS_EB_APP_NAME }}
           
-          # Update environment to new version
-          aws elasticbeanstalk update-environment \
-          --environment-name ${{ secrets.AWS_EB_ENVIRONMENT }} \
-          --version-label "${{ steps.version-label.outputs.VERSION }}" 
+          # Check if environment exists, create if it doesn't
+          if ! aws elasticbeanstalk describe-environments --environment-names ${{ secrets.AWS_EB_ENVIRONMENT }} --application-name ${{ secrets.AWS_EB_APP_NAME }} | grep -q "EnvironmentName"; then
+            echo "Creating environment..."
+            aws elasticbeanstalk create-environment \
+              --application-name ${{ secrets.AWS_EB_APP_NAME }} \
+              --environment-name ${{ secrets.AWS_EB_ENVIRONMENT }} \
+              --solution-stack-name "64bit Amazon Linux 2023 v6.0.0 running Node.js 18"
+            
+            # Wait for environment to be created
+            echo "Waiting for environment to be ready..."
+            aws elasticbeanstalk wait environment-exists --environment-names ${{ secrets.AWS_EB_ENVIRONMENT }}
+          fi
+          
+          # Generate a unique version label using commit SHA and timestamp
+          VERSION_LABEL="app-$(date +%Y%m%d%H%M%S)-${GITHUB_SHA:0:8}"
+          echo "Deploying version: $VERSION_LABEL"
+          
+          # Deploy using AWS EB CLI with unique version label
+          eb deploy ${{ secrets.AWS_EB_ENVIRONMENT }} --staged --label $VERSION_LABEL 
