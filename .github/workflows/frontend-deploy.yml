@@ -47,6 +47,29 @@ jobs:
         working-directory: ./frontend
         run: npm run build
         
+      - name: Update environment config
+        run: |
+          # Check which build directory exists
+          BUILD_DIR="frontend/dist"
+          if [ -d "frontend/build" ]; then
+            BUILD_DIR="frontend/build"
+          fi
+          
+          echo "Using build directory: $BUILD_DIR"
+          
+          # Copy env-config.js to build output if it doesn't exist
+          if [ ! -f "$BUILD_DIR/env-config.js" ]; then
+            cp frontend/public/env-config.js $BUILD_DIR/
+          fi
+          
+          # Replace placeholders with actual values
+          sed -i "s|__BACKEND_URL__|${{ secrets.BACKEND_URL }}|g" $BUILD_DIR/env-config.js
+          sed -i "s|__AWS_REGION__|${{ secrets.AWS_REGION }}|g" $BUILD_DIR/env-config.js
+          sed -i "s|__AWS_COGNITO_USER_POOL_ID__|${{ secrets.AWS_COGNITO_USER_POOL_ID }}|g" $BUILD_DIR/env-config.js
+          sed -i "s|__AWS_COGNITO_CLIENT_ID__|${{ secrets.AWS_COGNITO_CLIENT_ID }}|g" $BUILD_DIR/env-config.js
+          sed -i "s|__AWS_S3_BUCKET__|${{ secrets.AWS_S3_BUCKET }}|g" $BUILD_DIR/env-config.js
+          sed -i "s|__AWS_COGNITO_IDENTITY_POOL_ID__|${{ secrets.AWS_COGNITO_IDENTITY_POOL_ID }}|g" $BUILD_DIR/env-config.js
+      
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -71,7 +94,15 @@ jobs:
           
       # Deploy to S3/CloudFront
       - name: Upload to S3
-        run: aws s3 sync frontend/build/ s3://${{ secrets.AWS_S3_BUCKET }} --delete
+        run: |
+          # Use the same build directory detection as in the previous step
+          BUILD_DIR="frontend/dist"
+          if [ -d "frontend/build" ]; then
+            BUILD_DIR="frontend/build"
+          fi
+          
+          echo "Uploading from $BUILD_DIR to S3"
+          aws s3 sync $BUILD_DIR/ s3://${{ secrets.AWS_S3_BUCKET }} --delete
         
       - name: Invalidate CloudFront cache
         if: success()
