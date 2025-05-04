@@ -91,11 +91,38 @@ jobs:
           --source-bundle S3Bucket="${{ secrets.AWS_EB_BUCKET }}",S3Key="deploy-${{ github.run_id }}-${{ github.sha }}.zip" \
           --auto-create-application
           
-      - name: Wait for application version to be processed
+      - name: Wait for application version to be processed (with timeout)
         run: |
-          aws elasticbeanstalk wait application-version-available \
-          --application-name ${{ secrets.AWS_EB_APP_NAME }} \
-          --version-labels "${{ steps.version-label.outputs.VERSION }}"
+          echo "Waiting for application version to be processed..."
+          MAX_ATTEMPTS=30
+          ATTEMPT=0
+          
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            STATUS=$(aws elasticbeanstalk describe-application-versions \
+              --application-name ${{ secrets.AWS_EB_APP_NAME }} \
+              --version-labels "${{ steps.version-label.outputs.VERSION }}" \
+              --query "ApplicationVersions[0].Status" \
+              --output text)
+              
+            echo "Current status: $STATUS"
+            
+            if [ "$STATUS" = "PROCESSED" ]; then
+              echo "Application version is now available!"
+              break
+            elif [ "$STATUS" = "FAILED" ]; then
+              echo "Application version processing failed!"
+              exit 1
+            fi
+            
+            ATTEMPT=$((ATTEMPT+1))
+            echo "Waiting for processing... Attempt $ATTEMPT of $MAX_ATTEMPTS"
+            sleep 10
+          done
+          
+          if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+            echo "Timed out waiting for application version to be processed"
+            exit 1
+          fi
           
       - name: Deploy to Elastic Beanstalk
         run: |
