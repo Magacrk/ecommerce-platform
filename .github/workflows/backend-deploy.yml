@@ -124,5 +124,5 @@ jobs:
           VERSION_LABEL="app-$(date +%Y%m%d%H%M%S)-${GITHUB_SHA:0:8}"
           echo "Deploying version: $VERSION_LABEL"
           
-          # Deploy using AWS EB CLI with unique version label
-          eb deploy ${{ secrets.AWS_EB_ENVIRONMENT }} --staged --label $VERSION_LABEL 
+          # Deploy using AWS EB CLI with unique version label and verbose logging
+          eb deploy ${{ secrets.AWS_EB_ENVIRONMENT }} --staged --label $VERSION_LABEL --verbose 
