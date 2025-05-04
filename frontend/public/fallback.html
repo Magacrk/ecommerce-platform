@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MarketHub - Loading Error</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background-color: #f8f9fa;
+      color: #212529;
+      line-height: 1.5;
+      padding: 2rem;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .card {
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      padding: 2rem;
+      margin-bottom: 2rem;
+    }
+    h1 {
+      color: #0ea5e9;
+      margin-top: 0;
+    }
+    pre {
+      background-color: #f1f1f1;
+      padding: 1rem;
+      border-radius: 4px;
+      overflow: auto;
+    }
+    .button {
+      display: inline-block;
+      background-color: #0ea5e9;
+      color: white;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      text-decoration: none;
+      margin-right: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>MarketHub Application</h1>
+    <p>The application encountered an error while loading. This could be due to missing configuration or network issues.</p>
+    
+    <h2>Diagnostics</h2>
+    <div id="diagnostics">
+      <p>Running diagnostics...</p>
+    </div>
+    
+    <div>
+      <a href="/" class="button">Reload Application</a>
+      <a href="/config.js" class="button">View Configuration</a>
+    </div>
+  </div>
+
+  <script>
+    // Function to run basic diagnostics
+    async function runDiagnostics() {
+      const diagnosticsDiv = document.getElementById('diagnostics');
+      let html = '<ul>';
+      
+      // Check if config.js is available
+      try {
+        const configResponse = await fetch('/config.js');
+        html += `<li>Config.js: ${configResponse.ok ? '✓ Available' : '❌ Not available'}</li>`;
+      } catch (error) {
+        html += `<li>Config.js: ❌ Error: ${error.message}</li>`;
+      }
+      
+      // Check if env-config.js is available
+      try {
+        const envConfigResponse = await fetch('/env-config.js');
+        html += `<li>Env-config.js: ${envConfigResponse.ok ? '✓ Available' : '❌ Not available'}</li>`;
+      } catch (error) {
+        html += `<li>Env-config.js: ❌ Error: ${error.message}</li>`;
+      }
+      
+      // Check for main script
+      try {
+        // Get the main script URL by looking at script tags
+        const scripts = Array.from(document.getElementsByTagName('script'))
+          .filter(script => script.src.includes('main') || script.src.includes('index'));
+        
+        if (scripts.length > 0) {
+          const mainScript = scripts[0].src;
+          const scriptResponse = await fetch(mainScript);
+          html += `<li>Main script: ${scriptResponse.ok ? '✓ Available' : '❌ Not available'}</li>`;
+        } else {
+          html += '<li>Main script: ❓ Could not determine path</li>';
+        }
+      } catch (error) {
+        html += `<li>Main script: ❌ Error: ${error.message}</li>`;
+      }
+      
+      html += '</ul>';
+      diagnosticsDiv.innerHTML = html;
+    }
+    
+    // Run diagnostics when page loads
+    window.onload = runDiagnostics;
+  </script>
+</body>
+</html> 

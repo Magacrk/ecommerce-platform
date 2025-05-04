@@ -18,4 +18,11 @@ interface Window {
     S3_REGION: string;
     BACKEND_URL: string;
   };
+  APP_CONFIG?: {
+    AWS_REGION: string;
+    AWS_COGNITO_USER_POOL_ID: string;
+    AWS_COGNITO_CLIENT_ID: string;
+    BACKEND_URL: string;
+    DEBUG_MODE: boolean;
+  };
 } 

@@ -62,6 +62,14 @@ jobs:
             cp frontend/public/env-config.js $BUILD_DIR/
           fi
           
+          # Copy config.js to build output if it doesn't exist
+          if [ ! -f "$BUILD_DIR/config.js" ]; then
+            cp frontend/public/config.js $BUILD_DIR/
+          fi
+          
+          # Copy fallback.html to build output
+          cp frontend/public/fallback.html $BUILD_DIR/
+          
           # Replace placeholders with actual values in env-config.js
           sed -i "s|__BACKEND_URL__|${{ secrets.BACKEND_URL }}|g" $BUILD_DIR/env-config.js
           sed -i "s|__AWS_REGION__|${{ secrets.AWS_REGION }}|g" $BUILD_DIR/env-config.js
@@ -78,6 +86,12 @@ jobs:
           sed -i "s|%%S3_BUCKET%%|${{ secrets.AWS_S3_BUCKET }}|g" $BUILD_DIR/index.html
           sed -i "s|%%S3_REGION%%|${{ secrets.AWS_REGION }}|g" $BUILD_DIR/index.html
           sed -i "s|%%BACKEND_URL%%|${{ secrets.BACKEND_URL }}|g" $BUILD_DIR/index.html
+          
+          # Update direct config.js file with actual values
+          sed -i "s|us-east-1|${{ secrets.AWS_REGION }}|g" $BUILD_DIR/config.js
+          sed -i "s|us-east-1_xxxxxxxx|${{ secrets.AWS_COGNITO_USER_POOL_ID }}|g" $BUILD_DIR/config.js
+          sed -i "s|xxxxxxxxxxxxxxxxxxxxxxxxxx|${{ secrets.AWS_COGNITO_CLIENT_ID }}|g" $BUILD_DIR/config.js
+          sed -i "s|https://your-backend-url.com|${{ secrets.BACKEND_URL }}|g" $BUILD_DIR/config.js
       
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
