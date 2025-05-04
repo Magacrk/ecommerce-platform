@@ -72,17 +72,43 @@ jobs:
         run: zip -r deploy.zip . -x "node_modules/*" "src/*" ".git/*"
         
       - name: Upload package to S3
-        run: aws s3 cp deploy.zip s3://${{ secrets.AWS_EB_BUCKET }}/deploy.zip
+        run: aws s3 cp deploy.zip s3://${{ secrets.AWS_EB_BUCKET }}/deploy-${{ github.run_id }}-${{ github.sha }}.zip
+        
+      - name: Generate unique version label
+        id: version-label
+        run: echo "VERSION=v-$(date +'%Y%m%d-%H%M%S')-${GITHUB_RUN_NUMBER}-${GITHUB_SHA:0:7}" >> $GITHUB_OUTPUT
         
       - name: Create new Elastic Beanstalk version
         run: |
+          # Check if application exists, create if it doesn't
+          aws elasticbeanstalk describe-applications --application-names ${{ secrets.AWS_EB_APP_NAME }} || \
+          aws elasticbeanstalk create-application --application-name ${{ secrets.AWS_EB_APP_NAME }}
+          
+          # Create new version
           aws elasticbeanstalk create-application-version \
           --application-name ${{ secrets.AWS_EB_APP_NAME }} \
-          --version-label "ver-${{ github.sha }}" \
-          --source-bundle S3Bucket="${{ secrets.AWS_EB_BUCKET }}",S3Key="deploy.zip"
+          --version-label "${{ steps.version-label.outputs.VERSION }}" \
+          --source-bundle S3Bucket="${{ secrets.AWS_EB_BUCKET }}",S3Key="deploy-${{ github.run_id }}-${{ github.sha }}.zip" \
+          --auto-create-application
+          
+      - name: Wait for application version to be processed
+        run: |
+          aws elasticbeanstalk wait application-version-available \
+          --application-name ${{ secrets.AWS_EB_APP_NAME }} \
+          --version-labels "${{ steps.version-label.outputs.VERSION }}"
           
       - name: Deploy to Elastic Beanstalk
         run: |
+          # Check if environment exists, create if it doesn't
+          aws elasticbeanstalk describe-environments --environment-names ${{ secrets.AWS_EB_ENVIRONMENT }} \
+          --application-name ${{ secrets.AWS_EB_APP_NAME }} || \
+          aws elasticbeanstalk create-environment \
+          --application-name ${{ secrets.AWS_EB_APP_NAME }} \
+          --environment-name ${{ secrets.AWS_EB_ENVIRONMENT }} \
+          --solution-stack-name "64bit Amazon Linux 2 v5.6.0 running Node.js 16" \
+          --version-label "${{ steps.version-label.outputs.VERSION }}"
+          
+          # Update environment to new version
           aws elasticbeanstalk update-environment \
           --environment-name ${{ secrets.AWS_EB_ENVIRONMENT }} \
-          --version-label "ver-${{ github.sha }}" 
+          --version-label "${{ steps.version-label.outputs.VERSION }}" 
