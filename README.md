@@ -1,3 +1,14 @@
+# My Project
+
+#MY WEBSITE
+
+![CI/CD Pipeline](frontend/website/dashboard.png)
+![Deployment Architecture](frontend/website/sign-in.png)
+![Deployment Architecture](frontend/website/seller.png)
+![Deployment Architecture](frontend/website/cart.png)
+![Deployment Architecture](frontend/website/checkout.png)
+
+
 # Multi-Vendor E-Commerce Platform
 
 A production-ready e-commerce platform built with React, TypeScript, Node.js, and AWS services.
