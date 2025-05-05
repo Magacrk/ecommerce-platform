@@ -16,6 +16,7 @@ const CartPage = lazy(() => import('@/pages/CartPage'));
 const CheckoutPage = lazy(() => import('@/pages/CheckoutPage'));
 const LoginPage = lazy(() => import('@/pages/auth/LoginPage'));
 const RegisterPage = lazy(() => import('@/pages/auth/RegisterPage'));
+const ConfirmationPage = lazy(() => import('@/pages/auth/ConfirmationPage'));
 const SellerRegisterPage = lazy(() => import('@/pages/auth/SellerRegisterPage'));
 const SellerDashboardPage = lazy(() => import('@/pages/seller/DashboardPage'));
 const SellerProductsPage = lazy(() => import('@/pages/seller/ProductsPage'));
@@ -43,6 +44,7 @@ function App() {
                   } />
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/register" element={<RegisterPage />} />
+                  <Route path="/confirm" element={<ConfirmationPage />} />
                   <Route path="/seller/register" element={<SellerRegisterPage />} />
                   <Route path="/seller" element={
                     <ProtectedRoute roles={['seller']}>

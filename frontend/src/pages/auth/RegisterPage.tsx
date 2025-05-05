@@ -30,7 +30,7 @@ const RegisterPage = () => {
         name,
         'custom:role': 'customer'
       });
-      navigate('/login', { state: { message: 'Registration successful! Please check your email to verify your account.' } });
+      navigate('/confirm', { state: { email } });
     } catch (err) {
       setError('Registration failed. Please try again.');
       console.error(err);
