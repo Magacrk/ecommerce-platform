@@ -19,6 +19,7 @@ interface CartContextType {
   clearCart: () => void;
   getCartTotal: () => number;
   getItemsCount: () => number;
+  lastAddedItem: CartItem | null;
 }
 
 interface CartProviderProps {
@@ -34,6 +35,7 @@ export const CartContext = createContext<CartContextType>({
   clearCart: () => {},
   getCartTotal: () => 0,
   getItemsCount: () => 0,
+  lastAddedItem: null,
 });
 
 // Provider component
@@ -43,6 +45,7 @@ export const CartProvider = ({ children }: CartProviderProps) => {
     const savedCart = localStorage.getItem('cart');
     return savedCart ? JSON.parse(savedCart) : [];
   });
+  const [lastAddedItem, setLastAddedItem] = useState<CartItem | null>(null);
 
   // Save cart items to localStorage whenever they change
   useEffect(() => {
@@ -51,6 +54,8 @@ export const CartProvider = ({ children }: CartProviderProps) => {
 
   // Add item to cart
   const addToCart = (item: Omit<CartItem, 'quantity'>) => {
+    let newItem: CartItem | null = null;
+    
     setCartItems((prevItems) => {
       // Check if item already exists in cart
       const existingItemIndex = prevItems.findIndex((cartItem) => cartItem.id === item.id);
@@ -62,12 +67,19 @@ export const CartProvider = ({ children }: CartProviderProps) => {
           ...updatedItems[existingItemIndex],
           quantity: updatedItems[existingItemIndex].quantity + 1,
         };
+        newItem = updatedItems[existingItemIndex];
         return updatedItems;
       } else {
         // Item doesn't exist, add it
-        return [...prevItems, { ...item, quantity: 1 }];
+        newItem = { ...item, quantity: 1 };
+        return [...prevItems, newItem];
       }
     });
+    
+    // Set the last added item for notification
+    if (newItem) {
+      setLastAddedItem(newItem);
+    }
   };
 
   // Remove item from cart
@@ -113,6 +125,7 @@ export const CartProvider = ({ children }: CartProviderProps) => {
     clearCart,
     getCartTotal,
     getItemsCount,
+    lastAddedItem,
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

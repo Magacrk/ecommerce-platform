@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
 import ReactImageZoom from 'react-image-zoom';
 import { useCart } from '@/contexts/CartContext';
+import { useNotification } from '@/contexts/NotificationContext';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 // Mock product data (would be fetched from API)
@@ -53,6 +54,7 @@ const ProductDetailPage = () => {
   const [selectedImage, setSelectedImage] = useState('');
   const [quantity, setQuantity] = useState(1);
   const { addToCart } = useCart();
+  const { showCartNotification } = useNotification();
 
   // Simulate fetching product data
   useEffect(() => {
@@ -83,6 +85,17 @@ const ProductDetailPage = () => {
 
   const handleAddToCart = () => {
     if (product) {
+      const cartItem = {
+        id: product.id,
+        name: product.name,
+        price: product.discountPrice || product.price,
+        image: product.images[0],
+        sellerId: product.sellerId,
+        sellerName: product.sellerName,
+        quantity: quantity
+      };
+      
+      // Add to cart one by one to maintain the cart behavior
       for (let i = 0; i < quantity; i++) {
         addToCart({
           id: product.id,
@@ -93,6 +106,9 @@ const ProductDetailPage = () => {
           sellerName: product.sellerName,
         });
       }
+      
+      // Show notification with the combined quantity
+      showCartNotification(cartItem);
     }
   };
 
